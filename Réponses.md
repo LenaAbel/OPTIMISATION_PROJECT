@@ -5,7 +5,7 @@ __Variables__:
 - t<sub>u1</sub> : temps en unité de temps pendant laquelle u1=(2,4) est active
 - t<sub>u2</sub> : temps en unité de temps pendant laquelle u2=(1,2) est active
 - t<sub>u3</sub> : temps en unité de temps pendant laquelle u3=(1,3) est active
-- t<sub>u4</sub> : temps en unité de temps pendant laquelle u4=(1,4 est active
+- t<sub>u4</sub> : temps en unité de temps pendant laquelle u4=(1,4) est active
 
 __Objectif__: 
 max t<sub>u1</sub>+t<sub>u2</sub>+t<sub>u3</sub>+t<sub>u4</sub>
