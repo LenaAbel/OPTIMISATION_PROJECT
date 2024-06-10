@@ -1,4 +1,45 @@
-Partie 4 :
+### Partie 3
+
+__Variables__:
+
+- t<sub>u1</sub> : temps en unité de temps pendant laquelle u1=(2,4) est active
+- t<sub>u2</sub> : temps en unité de temps pendant laquelle u2=(1,2) est active
+- t<sub>u3</sub> : temps en unité de temps pendant laquelle u3=(1,3) est active
+- t<sub>u4</sub> : temps en unité de temps pendant laquelle u4=(1,4 est active
+
+__Objectif__: 
+max t<sub>u1</sub>+t<sub>u2</sub>+t<sub>u3</sub>+t<sub>u4</sub>
+
+__Contraintes__:
+- Capteur s1 (u2, u3, u4) : t<sub>u2</sub>+t<sub>u3</sub>+t<sub>u4</sub> <= 6
+- Capteur s2 (u1, u2) : t<sub>u1</sub>+t<sub>u2</sub> <= 3
+- Capteur s3 (u3) : t<sub>u3</sub> <= 2
+- Capteur s4 (u1, u4) : t<sub>u1</sub> + t<sub>u4</sub> <= 6
+
+
+__Programme GLPK__:
+ 
+var t_u1 >= 0;
+var t_u2 >= 0;
+var t_u3 >= 0;
+var t_u4 >= 0;
+
+maximize Lifetime: t_u1 + t_u2 + t_u3 + t_u4;
+
+s.t. Energy_Constraint_1: t_u2 + t_u3 + t_u4 <= 6;
+s.t. Energy_Constraint_2: t_u1 + t_u2 <= 3;
+s.t. Energy_Constraint_3: t_u3 <= 2;
+s.t. Energy_Constraint_4: t_u1 + t_u4 <= 6;
+
+solve;
+
+display t_u1, t_u2, t_u3, t_u4;
+
+__Résultat__ : 
+
+La solution optimale est de 8.5
+
+### Partie 4 :
 Pour expérimenter nous allons essayer avec les quatres temps suivant :
 
 T1  T2  T3  T4  T5  Durée de vie optimale
@@ -11,7 +52,7 @@ On peut constater que des durées de vie plus équilibrées entre les capteurs p
 
 En conclusion, cette méthode permet de maximiser la durée de vie du réseau de surveillance en utilisant un ordonnancement optimal des configurations de capteurs, en respectant les contraintes d'énergie.
 
-Partie 5:
+### Partie 5:
 Étape 1 : Génération des configurations élémentaires
 Imaginons que nous avons un réseau de 5 capteurs pour surveiller 4 zones. Voici un exemple de génération de configurations élémentaires pour ce réseau :
 
