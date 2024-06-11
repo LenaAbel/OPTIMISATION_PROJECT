@@ -2,37 +2,50 @@ import json
 import random
 from itertools import combinations
 
+# 2.1 Partie 1 : manipulation des données
 def read_file(filename):
-    with open(filename, 'r') as file:
-        lines = file.readlines()
+    """Reads sensor configuration from a file."""
+    try:
+        with open(filename, 'r') as file:
+            lines = file.readlines()
+    except IOError:
+        print("File not found or error in reading file.")
+        return None
 
-    scanner_count = int(lines[0].strip())
+    sensor_count = int(lines[0].strip())
+    print('sensor_count', sensor_count)
     zone_count = int(lines[1].strip())
-    
+    print('zone_count', zone_count)
     time_data = list(map(int, lines[2].strip().split()))
+    print('time_data', time_data)
 
     zone_data = []
-    for i in range(3, 3 + scanner_count):
-        zone_data.append(list(map(str, lines[i].strip().split())))
+    for i in range(3, 3 + sensor_count):
+        zone_data.append(lines[i].strip().split())
 
-    return scanner_count, zone_count, time_data, zone_data
+    return sensor_count, zone_count, time_data, zone_data
 
+# 2.1 Partie 1 : manipulation des données
 def user_input_loop():
+    """Gathers user input for sensor configuration."""
     print("You will start entering manual data.")
-    scanner_count = int(input("Enter the number of scanner :\n"))
-    zone_count = int(input("Enter the number of zone :\n"))
-    time_list = str(input("Enter all the time unit like 't1 t2 t3 t4' :\n"))
-    time_data = time_list.split(' ')
-    print("Please, respect the following format :")
-    print("scanner x : z1 z2 z3 z4 (leur id)")
+    scanner_count = int(input("Enter the number of scanners:\n"))
+    zone_count = int(input("Enter the number of zones:\n"))
+    time_list = input("Enter lifespan of each scanner separated by space (e.g., '6 3 2 6'):\n")
+    time_data = list(map(int, time_list.split()))
+
+    print("Enter zones covered by each scanner in format: z1 z2 (e.g., '1 2')")
     zone_data = []
     for i in range(scanner_count):
-        zone_data.append(str(input("scanner " + str(i) + " : ")).split())
-    print(zone_data)
-    print(time_data)
+        zones = input(f"Scanner {i + 1}: ").split()
+        zone_data.append(zones)
+
     return scanner_count, zone_count, time_data, zone_data
 
+# 2.2 Partie 2 : construction de configurations élémentaires
 def find_elementary_configurations(scanner_count, zone_count, zone_data):
+    """Finds all configurations of scanners that cover all zones.
+    Brute force approach"""
     elementary_configs = []
 
     # Generate all possible combinations of scanners
@@ -45,7 +58,7 @@ def find_elementary_configurations(scanner_count, zone_count, zone_data):
                 elementary_configs.append(combo)
     return elementary_configs
 
-def main(): 
+def main():
     print("Sensor Activation Scheduling for Zone Surveillance")
     print("1. Read data from file")
     print("2. Generate random data")
@@ -57,7 +70,7 @@ def main():
         scanner_count, zone_count, time_data, zone_data = read_file(filename)
         config = find_elementary_configurations(scanner_count, zone_count, zone_data)
         print("Elementary configurations:", config)
-    elif choice == 2: 
+    elif choice == 2:
         print("We'll see that later <3 !")
     elif choice == 3:
         scanner_count, zone_count, time_data, zone_data = user_input_loop()
