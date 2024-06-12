@@ -1,6 +1,9 @@
 import math
 import random
 import time
+from itertools import combinations
+
+# Classe pour les couleurs de console
 class bcolors:
     HEADER = '\033[95m'
     OKBLUE = '\033[94m'
@@ -13,130 +16,108 @@ class bcolors:
     BOLD = '\033[1m'
     UNDERLINE = '\033[4m'
 
+# Fonction pour lire les données des capteurs à partir d'un fichier
 def read_sensor_data_from_file(filename):
     try:
         with open(filename, 'r') as file:
-            lines = file.readlines()
+            lines = file.readlines()  # Lire toutes les lignes du fichier
     except IOError:
         print(f"{bcolors.FAIL}Fichier introuvable ou erreur lors de la lecture du fichier.{bcolors.ENDC}")
         return None
 
-    sensor_count = int(lines[0].strip())
-    #print(f"{bcolors.OKRED}sensor_count{bcolors.ENDC}", sensor_count)
-    zones_count = int(lines[1].strip())
-    #print(f"{bcolors.OKRED}zones_count{bcolors.ENDC}", zones_count)
-
-    lifetimes = list(map(int, lines[2].strip().split()))
+    sensor_count = int(lines[0].strip())  # Nombre de capteurs
+    zones_count = int(lines[1].strip())  # Nombre de zones
+    lifetimes = list(map(int, lines[2].strip().split()))  # Durée de vie des capteurs
     zone_data = []
     for i in range(3, 3 + sensor_count):
-        zone_data.append(list(map(int, lines[i].strip().split())))
+        zone_data.append(list(map(int, lines[i].strip().split())))  # Zones couvertes par chaque capteur
 
     return sensor_count, zones_count, lifetimes, zone_data
 
-
+# Fonction pour générer des données aléatoires pour les capteurs et les zones
 def generate_random_data(sensor_count, zones_count):
-    # Random de 1 à 10 pour la durée de vie de chaque capteur
-    lifetimes = [random.randint(1, 10) for _ in range(sensor_count)]
-    # Random pour les zones couvertes par chaque capteur
-    # Random.sample pour éviter les doublons
-    # Range de 1 à zones_count + 1 pour inclure la dernière zone
+    lifetimes = [random.randint(1, 10) for _ in range(sensor_count)]  # Durée de vie aléatoire pour chaque capteur
+    # Générer des zones couvertes aléatoirement pour chaque capteur
     zone_data = [random.sample(range(1, zones_count + 1), random.randint(1, zones_count)) for _ in range(sensor_count)]
     return sensor_count, zones_count, lifetimes, zone_data
 
-
+# Fonction pour saisir manuellement les données des capteurs et des zones
 def manually_enter_data():
     sensor_count = int(input("Entrez le nombre de capteurs: "))
     zones_count = int(input("Entrez le nombre de zones: "))
     lifetimes = list(map(int, input("Entrez la durée de vie de chaque capteur (séparée par des espaces): ").split()))
     zone_data = []
     for i in range(sensor_count):
-        zones = list(
-            map(int, input(f"Entrez les zones couvertes par le capteur {i + 1} (séparées par des espaces): ").split()))
+        zones = list(map(int, input(f"Entrez les zones couvertes par le capteur {i + 1} (séparées par des espaces): ").split()))
         zone_data.append(zones)
     return sensor_count, zones_count, lifetimes, zone_data
 
-
+# Heuristique gloutonne pour sélectionner les capteurs
 def greedy_configuration_sensors(zones, sensors):
     """
-    Utilise une heuristique greedy/glouton pour identifier un ensemble de capteurs qui couvre toutes les zones spécifiées.
+    Utilise une heuristique gloutonne pour identifier un ensemble de capteurs qui couvre toutes les zones spécifiées.
     La fonction sélectionne le capteur qui couvre le plus grand nombre de zones encore non couvertes à chaque itération.
     """
-    # Commencer avec toutes les zones non couvertes.
-    uncovered_zones = set(zones)
-    selected_sensors = []  # Liste pour garder les capteurs sélectionnés.
+    uncovered_zones = set(zones)  # Ensemble des zones non couvertes
+    selected_sensors = []  # Liste des capteurs sélectionnés
 
     while uncovered_zones:
         best_sensor, best_coverage = None, 0  # Initialiser le meilleur capteur et le nombre de zones qu'il couvre
-
         # Parcourir chaque capteur et ses zones couvertes pour trouver le meilleur choix
         for sensor, zone_data in sensors.items():
-            # Calculer le nombre de zones non couvertes que le capteur peut couvrir
             effective_coverage = len(uncovered_zones.intersection(zone_data))
-            # Si ce capteur couvre plus de zones que le précédent meilleur, le choisir
             if effective_coverage > best_coverage:
                 best_sensor, best_coverage = sensor, effective_coverage
 
-        # Si un meilleur capteur a été trouvé, mettre à jour les zones couvertes et ajouter le capteur à la liste
         if best_sensor:
-            uncovered_zones.difference_update(
-                sensors[best_sensor])  # Enlever les zones couvertes par le meilleur capteur
-            selected_sensors.append(best_sensor)
+            uncovered_zones.difference_update(sensors[best_sensor])  # Mettre à jour les zones non couvertes
+            selected_sensors.append(best_sensor)  # Ajouter le meilleur capteur à la liste des capteurs sélectionnés
 
-        # Si aucun capteur ne peut être trouvé pour couvrir des zones supplémentaires, arrêter la boucle.
         if best_sensor is None:
-            break
+            break  # Si aucun capteur ne peut être trouvé pour couvrir des zones supplémentaires, arrêter la boucle
 
     return selected_sensors
 
-from itertools import combinations
-
+# Vérifier si une configuration est élémentaire
 def is_elementary_configuration(zones, sensors, config):
     """
     Vérifie si la configuration donnée couvre toutes les zones et est élémentaire.
-    C'est-à-dire, si l'enlèvement de tout capteur de cette configuration
-    fait que certaines zones ne sont plus couvertes.
+    C'est-à-dire, si l'enlèvement de tout capteur de cette configuration fait que certaines zones ne sont plus couvertes.
     """
     covered_zones = set()
     for sensor in config:
-        covered_zones.update(sensors[sensor])
+        covered_zones.update(sensors[sensor])  # Ajouter les zones couvertes par chaque capteur de la configuration
 
-    # Vérifier si toutes les zones sont couvertes
-    if covered_zones != set(zones):
-        return False
+    if set(zones) != covered_zones:
+        return False  # Si toutes les zones ne sont pas couvertes, la configuration n'est pas élémentaire
 
-    # Vérifier si la configuration est élémentaire
     for sensor in config:
-        necessary_zones = covered_zones - set(sensors[sensor])
-        if not necessary_zones.issubset(set(zones) - set(sensors[sensor])):
-            return False
+        temp_config = config.copy()  # Créer une copie temporaire de la configuration
+        temp_config.remove(sensor)  # Retirer un capteur de la copie
+        temp_covered_zones = set()
+        for s in temp_config:
+            temp_covered_zones.update(sensors[s])  # Vérifier les zones couvertes sans ce capteur
+        if set(zones) == temp_covered_zones:
+            return False  # Si la couverture est la même sans ce capteur, la configuration n'est pas élémentaire
 
     return True
 
-def find_elementary_configurations_bruteforce(zones, sensors):
-    """
-    Trouve toutes les configurations élémentaires en utilisant une approche brute-force.
-    """
-    elementary_configs = []
-    sensor_list = list(sensors.keys())
-    for r in range(1, len(sensor_list) + 1):
-        for config in combinations(sensor_list, r):
-            if is_elementary_configuration(zones, sensors, config):
-                elementary_configs.append(config)
-
-    return elementary_configs
-
+# Recuit simulé pour trouver une configuration élémentaire
 def recuit_simule(zones, sensors, initial_config):
+    """
+    Utilise le recuit simulé pour trouver une configuration élémentaire optimale.
+    """
     def get_neighbor(config):
         """
         Générer un voisin en ajoutant ou en supprimant un capteur de la configuration donnée.
         """
         neighbor = config.copy()
         if random.random() > 0.5 and len(config) > 1:
-            neighbor.remove(random.choice(config))
+            neighbor.remove(random.choice(config))  # Supprimer un capteur aléatoirement
         else:
             available_sensors = set(sensors.keys()) - set(config)
             if available_sensors:
-                neighbor.append(random.choice(list(available_sensors)))
+                neighbor.append(random.choice(list(available_sensors)))  # Ajouter un capteur disponible
         return neighbor
 
     def acceptance_probability(old_cost, new_cost, temperature):
@@ -144,8 +125,8 @@ def recuit_simule(zones, sensors, initial_config):
         Calculer la probabilité d'accepter un voisin en fonction de la température et des coûts.
         """
         if new_cost < old_cost:
-            return 1.0
-        return math.exp((old_cost - new_cost) / temperature)
+            return 1.0  # Toujours accepter si le coût est inférieur
+        return math.exp((old_cost - new_cost) / temperature)  # Calculer la probabilité d'accepter une solution pire
 
     def cost_function(config):
         """
@@ -154,7 +135,7 @@ def recuit_simule(zones, sensors, initial_config):
         covered_zones = set()
         for sensor in config:
             covered_zones.update(sensors[sensor])
-        return len(zones) - len(covered_zones)
+        return len(zones) - len(covered_zones)  # Coût basé sur le nombre de zones non couvertes
 
     current_config = initial_config
     best_config = initial_config
@@ -173,6 +154,20 @@ def recuit_simule(zones, sensors, initial_config):
         temperature *= cooling_rate
 
     return best_config
+
+# Recherche exhaustive pour trouver toutes les configurations élémentaires
+def find_elementary_configurations_bruteforce(zones, sensors):
+    """
+    Trouve toutes les configurations élémentaires en utilisant une approche brute-force.
+    """
+    elementary_configs = []
+    all_sensors = list(sensors.keys())
+    for r in range(1, len(all_sensors) + 1):
+        for comb in combinations(all_sensors, r):
+            if is_elementary_configuration(zones, sensors, list(comb)):
+                elementary_configs.append(list(comb))  # Ajouter les configurations élémentaires trouvées
+    return elementary_configs
+
 def main():
     print(f"Choisissez l'option de saisie des données:")
     print(f"{bcolors.OKBLUE}1. Lire depuis un fichier{bcolors.ENDC}")
@@ -202,15 +197,14 @@ def main():
     print(f"{bcolors.HEADER}Durée de vie des capteurs:{bcolors.ENDC} {lifetimes}")
     print(f"{bcolors.HEADER}Zones couvertes par chaque capteur:{bcolors.ENDC} {coverage}")
 
-    # Mesurer le temps d'exécution pour l'heuristique greedy
+    # Mesurer le temps d'exécution pour l'heuristique gloutonne
     start_time = time.perf_counter()
     greedy_config = greedy_configuration_sensors(zones, sensors)
     end_time = time.perf_counter()
     greedy_time_ns = (end_time - start_time) * 1e9
     greedy_time_s = end_time - start_time
     print(f"{bcolors.OKGREEN}Configuration élémentaire trouvée par Greedy:{bcolors.ENDC} {greedy_config}")
-    print(
-        f"{bcolors.OKGREEN}Temps d'exécution pour Greedy:{bcolors.ENDC} {greedy_time_ns:.2f} ns ({greedy_time_s:.6f} s)")
+    print(f"{bcolors.OKGREEN}Temps d'exécution pour Greedy:{bcolors.ENDC} {greedy_time_ns:.2f} ns ({greedy_time_s:.6f} s)")
 
     # Mesurer le temps d'exécution pour le recuit simulé
     start_time = time.perf_counter()
@@ -219,20 +213,16 @@ def main():
     sa_time_ns = (end_time - start_time) * 1e9
     sa_time_s = end_time - start_time
     print(f"{bcolors.OKCYAN}Configuration élémentaire trouvée par recuit simulé:{bcolors.ENDC} {sa_config}")
-    print(
-        f"{bcolors.OKCYAN}Temps d'exécution pour Recuit Simulé:{bcolors.ENDC} {sa_time_ns:.2f} ns ({sa_time_s:.6f} s)")
+    print(f"{bcolors.OKCYAN}Temps d'exécution pour Recuit Simulé:{bcolors.ENDC} {sa_time_ns:.2f} ns ({sa_time_s:.6f} s)")
 
-    # Mesurer le temps d'exécution pour la recherche brute-force
+    # Mesurer le temps d'exécution pour la recherche exhaustive
     start_time = time.perf_counter()
     all_elementary_configs = find_elementary_configurations_bruteforce(zones, sensors)
     end_time = time.perf_counter()
     brute_force_time_ns = (end_time - start_time) * 1e9
     brute_force_time_s = end_time - start_time
-    print(
-        f"{bcolors.OKBLUE}Configurations élémentaires trouvées par Brute-force:{bcolors.ENDC} {all_elementary_configs}")
-    print(
-        f"{bcolors.OKBLUE}Temps d'exécution pour Brute-force:{bcolors.ENDC} {brute_force_time_ns:.2f} ns ({brute_force_time_s:.6f} s)")
-
+    print(f"{bcolors.OKBLUE}Configurations élémentaires trouvées par Brute-force:{bcolors.ENDC} {all_elementary_configs}")
+    print(f"{bcolors.OKBLUE}Temps d'exécution pour Brute-force:{bcolors.ENDC} {brute_force_time_ns:.2f} ns ({brute_force_time_s:.6f} s)")
 
 if __name__ == "__main__":
     main()
