@@ -51,97 +51,138 @@ def manually_enter_data():
     return sensor_count, zones_count, lifetimes, zone_data
 
 def greedy_configuration_sensors(zones, sensors):
-    uncovered_zones = set(zones)  # Ensemble des zones non couvertes
-    selected_sensors = []  # Liste des capteurs sélectionnés
+    # Convertir la liste des zones en un ensemble pour permettre des opérations rapides d'intersection et de différence
+    uncovered_zones = set(zones)  # Ensemble des zones non couvertes initialement
+    selected_sensors = []  # Liste pour stocker les capteurs sélectionnés
 
     while uncovered_zones:
-        best_sensor, best_coverage = None, 0  # Initialiser le meilleur capteur et sa couverture
-        print(f"Zones non couvertes: {uncovered_zones}")
+        best_sensor, best_coverage = None, 0 # Initialiser le meilleur capteur et sa couverture
+
+        # Parcourir chaque capteur et les zones qu'il couvre
         for sensor, zone_data in sensors.items():
             # Calculer combien de zones non couvertes sont couvertes par ce capteur
             effective_coverage = len(uncovered_zones.intersection(zone_data))
-            print(f"Capteur: {sensor}, Zones couvertes: {effective_coverage}")
+
+            # Si ce capteur couvre plus de zones non couvertes que le précédent meilleur
             if effective_coverage > best_coverage:
+                # Mettre à jour le meilleur capteur et sa couverture
                 best_sensor, best_coverage = sensor, effective_coverage
 
+        # Si un capteur a été trouvé pour couvrir des zones non couvertes
         if best_sensor:
-            uncovered_zones.difference_update(sensors[best_sensor])  # Mettre à jour les zones non couvertes
-            print(f"Zones couvertes par le capteur sélectionné: {sensors[best_sensor]}")
-            selected_sensors.append(best_sensor)  # Ajouter le capteur sélectionné
-            print(f"Capteur sélectionné: {best_sensor}")
+            # Mettre à jour les zones non couvertes en enlevant les zones couvertes par le meilleur capteur
+            uncovered_zones.difference_update(sensors[best_sensor])
 
+            # Ajouter le meilleur capteur à la liste des capteurs sélectionnés
+            selected_sensors.append(best_sensor)
+
+        # Si aucun capteur ne peut couvrir des zones supplémentaires (ce qui ne devrait pas arriver si les données sont valides)
         if best_sensor is None:
             break
 
+    # Retourner la liste des capteurs sélectionnés qui couvrent toutes les zones
     return selected_sensors
 
+
 def is_elementary_configuration(zones, sensors, config):
+    # stocker les zones couvertes par la configuration actuelle
     covered_zones = set()
-    for sensor in config:
-        covered_zones.update(sensors[sensor])  # Ajouter les zones couvertes par chaque capteur de la configuration
 
+    # Parcourir chaque capteur de la configuration
+    for sensor in config:
+        # Ajouter les zones couvertes par ce capteur à l'ensemble des zones couvertes
+        covered_zones.update(sensors[sensor])
+
+    # Vérifier si toutes les zones sont couvertes par la configuration
+    # Si l'ensemble des zones couvertes n'est pas égal à l'ensemble des zones à couvrir, retourner False
     if set(zones) != covered_zones:
-        return False  # Vérifier si toutes les zones sont couvertes
+        return False
 
+    # Vérifier si la configuration est élémentaire
+    # Parcourir chaque capteur de la configuration
     for sensor in config:
+        # Créer une copie de la configuration actuelle
         temp_config = config.copy()
-        temp_config.remove(sensor)  # Créer une configuration temporaire sans ce capteur
-        temp_covered_zones = set()
-        for s in temp_config:
-            temp_covered_zones.update(sensors[s])  # Couvrir les zones avec la configuration temporaire
-        if set(zones) == temp_covered_zones:
-            return False  # Vérifier si la configuration est toujours valide sans ce capteur
+        # Retirer un capteur de la configuration temporaire
+        temp_config.remove(sensor)
 
+        # Initialiser un ensemble vide pour stocker les zones couvertes par la configuration temporaire
+        temp_covered_zones = set()
+        # Parcourir chaque capteur de la configuration temporaire
+        for s in temp_config:
+            # Ajouter les zones couvertes par ce capteur à l'ensemble des zones couvertes temporairement
+            temp_covered_zones.update(sensors[s])
+
+        # Vérifier si la configuration temporaire couvre toujours toutes les zones
+        if set(zones) == temp_covered_zones:
+            return False  # Si c'est le cas, retourner False car cela signifie que le capteur retiré n'était pas indispensable
+    # Si toutes les vérifications sont passées, retourner True, indiquant que la configuration est élémentaire
     return True
 
+
 def recuit_simule(zones, sensors, initial_config):
+    # Fonction pour générer un voisin de la configuration actuelle
     def get_neighbor(config):
         neighbor = config.copy()
-        if random.random() > 0.5 and len(config) > 1:
-            neighbor.remove(random.choice(config))  # Supprimer aléatoirement un capteur
+        if random.random() > 0.5 and len(config) > 1:  # Avec une probabilité de 50% et si la configuration a plus d'un capteur
+            neighbor.remove(random.choice(config))  # Supprimer aléatoirement un capteur de la configuration
         else:
-            available_sensors = set(sensors.keys()) - set(config)
+            available_sensors = set(sensors.keys()) - set(config)  # Capteurs disponibles qui ne sont pas dans la configuration actuelle
             if available_sensors:
-                neighbor.append(random.choice(list(available_sensors)))  # Ajouter aléatoirement un capteur
-        return neighbor
+                neighbor.append(random.choice(list(available_sensors)))  # Ajouter aléatoirement un capteur disponible à la configuration
+        return neighbor  # Retourner la configuration voisine
 
+    # Fonction pour calculer la probabilité d'accepter une nouvelle configuration
     def acceptance_probability(old_cost, new_cost, temperature):
         if new_cost < old_cost:
             return 1.0  # Toujours accepter une meilleure solution
-        return math.exp((old_cost - new_cost) / temperature)  # Probabilité d'accepter une pire solution
+        return math.exp((old_cost - new_cost) / temperature)  # Calculer la probabilité d'accepter une pire solution
 
+    # Fonction de coût basée sur le nombre de zones non couvertes
     def cost_function(config):
-        covered_zones = set()
+        covered_zones = set()  # Initialiser un ensemble vide pour les zones couvertes
         for sensor in config:
-            covered_zones.update(sensors[sensor])
-        return len(zones) - len(covered_zones)  # Coût basé sur le nombre de zones non couvertes
+            covered_zones.update(sensors[sensor])  # Ajouter les zones couvertes par chaque capteur de la configuration
+        return len(zones) - len(covered_zones)  # Le coût est le nombre de zones non couvertes
 
-    current_config = initial_config
-    best_config = initial_config
-    temperature = 100.0
-    cooling_rate = 0.99
+    current_config = initial_config  # Initialiser la configuration actuelle avec la configuration initiale
+    best_config = initial_config  # Initialiser la meilleure configuration avec la configuration initiale
+    temperature = 100.0  # Initialiser la température à 100.0
+    cooling_rate = 0.99  # Initialiser le taux de refroidissement à 0.99
 
+    # Boucle principale du recuit simulé
     while temperature > 1.0:
-        neighbor = get_neighbor(current_config)
-        if is_elementary_configuration(zones, sensors, neighbor):
-            current_cost = cost_function(current_config)
-            neighbor_cost = cost_function(neighbor)
+        neighbor = get_neighbor(current_config)  # Générer une configuration voisine
+        if is_elementary_configuration(zones, sensors, neighbor):  # Vérifier si la configuration voisine est élémentaire
+            current_cost = cost_function(current_config)  # Calculer le coût de la configuration actuelle
+            neighbor_cost = cost_function(neighbor)  # Calculer le coût de la configuration voisine
             if acceptance_probability(current_cost, neighbor_cost, temperature) > random.random():
-                current_config = neighbor
+                current_config = neighbor  # Accepter la configuration voisine comme nouvelle configuration actuelle
                 if neighbor_cost < cost_function(best_config):
-                    best_config = neighbor
-        temperature *= cooling_rate
+                    best_config = neighbor  # Mettre à jour la meilleure configuration si la voisine est meilleure
+        temperature *= cooling_rate  # Réduire la température selon le taux de refroidissement
 
-    return best_config
+    return best_config  # Retourner la meilleure configuration trouvée
+
 
 def find_elementary_configurations_bruteforce(zones, sensors):
+    # Initialiser une liste vide pour stocker les configurations élémentaires trouvées
     elementary_configs = []
+
     all_sensors = list(sensors.keys())
+
+    # Parcourir toutes les tailles possibles de combinaisons de capteurs, de 1 à N (le nombre total de capteurs)
     for r in range(1, len(all_sensors) + 1):
+        # Générer toutes les combinaisons possibles de r capteurs parmi tous les capteurs
         for comb in combinations(all_sensors, r):
+            # Vérifier si la combinaison actuelle est une configuration élémentaire
             if is_elementary_configuration(zones, sensors, list(comb)):
-                elementary_configs.append(list(comb))  # Ajouter les configurations élémentaires
+                # Si c'est une configuration élémentaire, l'ajouter à la liste des configurations élémentaires
+                elementary_configs.append(list(comb))
+
+    # Retourner la liste de toutes les configurations élémentaires trouvées
     return elementary_configs
+
 
 def main():
     print(f"Choisissez l'option de saisie des données:")
