@@ -83,6 +83,23 @@ def greedy_configuration_sensors(zones, sensors):
     # Retourner la liste des capteurs sélectionnés qui couvrent toutes les zones
     return selected_sensors
 
+def find_elementary_configurations_bruteforce(zones, sensors):
+    # Initialiser une liste vide pour stocker les configurations élémentaires trouvées
+    elementary_configs = []
+
+    all_sensors = list(sensors.keys())
+
+    # Parcourir toutes les tailles possibles de combinaisons de capteurs, de 1 à N (le nombre total de capteurs)
+    for r in range(1, len(all_sensors) + 1):
+        # Générer toutes les combinaisons possibles de r capteurs parmi tous les capteurs
+        for comb in combinations(all_sensors, r):
+            # Vérifier si la combinaison actuelle est une configuration élémentaire
+            if is_elementary_configuration(zones, sensors, list(comb)):
+                # Si c'est une configuration élémentaire, l'ajouter à la liste des configurations élémentaires
+                elementary_configs.append(list(comb))
+
+    # Retourner la liste de toutes les configurations élémentaires trouvées
+    return elementary_configs
 
 def is_elementary_configuration(zones, sensors, config):
     # stocker les zones couvertes par la configuration actuelle
@@ -165,23 +182,7 @@ def recuit_simule(zones, sensors, initial_config):
     return best_config  # Retourner la meilleure configuration trouvée
 
 
-def find_elementary_configurations_bruteforce(zones, sensors):
-    # Initialiser une liste vide pour stocker les configurations élémentaires trouvées
-    elementary_configs = []
 
-    all_sensors = list(sensors.keys())
-
-    # Parcourir toutes les tailles possibles de combinaisons de capteurs, de 1 à N (le nombre total de capteurs)
-    for r in range(1, len(all_sensors) + 1):
-        # Générer toutes les combinaisons possibles de r capteurs parmi tous les capteurs
-        for comb in combinations(all_sensors, r):
-            # Vérifier si la combinaison actuelle est une configuration élémentaire
-            if is_elementary_configuration(zones, sensors, list(comb)):
-                # Si c'est une configuration élémentaire, l'ajouter à la liste des configurations élémentaires
-                elementary_configs.append(list(comb))
-
-    # Retourner la liste de toutes les configurations élémentaires trouvées
-    return elementary_configs
 
 
 def main():

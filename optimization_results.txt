@@ -1,0 +1,5 @@
+t_u1 = 2.5
+t_u2 = 0.5
+t_u3 = 2.0
+t_u4 = 3.5
+Total_active_time = 8.5
